@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -7,7 +8,7 @@ import pdfplumber
 from PIL import Image
 import pytesseract
 
-# OPTIONAL: set path if needed
+# OPTIONAL (Windows path fix)
 # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
@@ -15,11 +16,11 @@ import pytesseract
 # APP CONFIG
 # -----------------------------
 st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
-st.title("📄 AI Resume Optimizer (Full Offline System)")
+st.title("📄 AI Resume Optimizer (Final Clean Version)")
 
 
 # -----------------------------
-# INPUT METHOD
+# INPUT TYPE
 # -----------------------------
 st.subheader("📥 Input Resume")
 
@@ -42,21 +43,20 @@ if input_type == "✍️ Text":
 # PDF INPUT
 # -----------------------------
 elif input_type == "📄 PDF":
-    file = st.file_uploader("Upload PDF", type=["pdf"])
+    file = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
     if file:
         with pdfplumber.open(file) as pdf:
-            resume_text = ""
             for page in pdf.pages:
                 resume_text += page.extract_text() or ""
         st.success("PDF extracted successfully")
 
 
 # -----------------------------
-# IMAGE INPUT (OCR)
+# IMAGE INPUT
 # -----------------------------
 elif input_type == "🖼️ Image":
-    img_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
+    img_file = st.file_uploader("Upload Image Resume", type=["png", "jpg", "jpeg"])
 
     if img_file:
         img = Image.open(img_file)
@@ -65,39 +65,55 @@ elif input_type == "🖼️ Image":
 
 
 # -----------------------------
-# SHOW EXTRACTED TEXT
+# SHOW RAW TEXT
 # -----------------------------
 if resume_text:
-    st.subheader("📄 Original Resume")
+    st.subheader("📄 Extracted Resume")
     st.write(resume_text)
 
 
 # -----------------------------
-# SIMPLE OFFLINE AI ENGINE
+# STRONG GRAMMAR + EXPANSION ENGINE
 # -----------------------------
 def optimize_resume(text):
 
+    text = text.strip()
+
+    # FIX standalone "i"
+    text = re.sub(r'\bi\b', 'I', text)
+
+    # -----------------------------
+    # FULL EXPANSIONS + FIXES
+    # -----------------------------
     fixes = {
-        " i ": " I ",
-        " im ": " I am ",
-        " dont ": " do not ",
-        " didnt ": " did not ",
-        " little bit": "basic knowledge of",
-        " some college": "a college",
-        " engg": "Engineering",
-        " ml ": " Machine Learning ",
+        "cse": "Computer Science Engineering",
+        "c.s.e": "Computer Science Engineering",
+        "cs": "Computer Science",
+        "ml": "Machine Learning",
+        "ai": "Artificial Intelligence",
+        "i am": "I am",
+        "i have": "I have",
+        "i know": "I have knowledge of",
+        "dont": "do not",
+        "didnt": "did not",
+        "engg": "Engineering",
+        "btech": "Bachelor of Technology",
+        "little bit": "basic knowledge of",
+        "some college": "a college",
+        "c++": "C++",
+        "java": "Java",
+        "sql": "SQL"
     }
 
-    output = text
-
     for k, v in fixes.items():
-        output = output.replace(k, v)
+        text = text.replace(k, v)
 
-    sentences = output.split(".")
+    # Sentence formatting
+    sentences = re.split(r'(?<=[.!?])\s+', text)
     sentences = [s.strip().capitalize() for s in sentences if s.strip()]
-    output = ". ".join(sentences) + "."
+    text = ". ".join(sentences)
 
-    return output
+    return text
 
 
 # -----------------------------
@@ -127,7 +143,7 @@ def generate_pdf(text):
 
 
 # -----------------------------
-# RUN OPTIMIZATION
+# MAIN ACTION
 # -----------------------------
 if resume_text and st.button("🚀 Optimize Resume"):
 
@@ -151,9 +167,9 @@ if resume_text and st.button("🚀 Optimize Resume"):
     # ATS SCORE
     # -------------------------
     keywords = [
-        "python", "machine learning", "sql",
-        "data", "analysis", "project",
-        "java", "c++", "engineering"
+        "python", "machine learning", "artificial intelligence",
+        "sql", "data", "analysis", "project",
+        "java", "c++", "computer science engineering"
     ]
 
     score = sum(12 for k in keywords if k in optimized.lower())
