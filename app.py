@@ -14,7 +14,7 @@ from groq import Groq
 # CONFIG
 # -----------------------------
 st.set_page_config(page_title="AI Resume Writer", layout="centered")
-st.title("🧠 REAL AI Resume Writer (ChatGPT-Level)")
+st.title("📄 AI Resume Optimizer")
 
 
 # -----------------------------
