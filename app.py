@@ -8,6 +8,7 @@ import pdfplumber
 from PIL import Image
 import pytesseract
 import language_tool_python
+tool = language_tool_python.LanguageToolPublicAPI('https://api.languagetool.org')
 
 
 # OPTIONAL (Windows users)
