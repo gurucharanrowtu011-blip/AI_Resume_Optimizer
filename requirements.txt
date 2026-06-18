@@ -3,3 +3,4 @@ reportlab
 pytesseract
 pillow
 pdfplumber
+language-tool-python
