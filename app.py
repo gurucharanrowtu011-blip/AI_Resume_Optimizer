@@ -1,108 +1,80 @@
 import streamlit as st
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
-st.title("📄 Offline AI Resume Optimizer (GenAI + Prompt Engineering)")
+import pdfplumber
+from PIL import Image
+import pytesseract
 
-resume_text = st.text_area("Enter your Resume Text")
+from prompts import RESUME_IMPROVER_PROMPT
 
-option = st.selectbox(
-    "Choose Optimization Type",
-    ["Basic Improvement", "ATS Optimization", "Role Based Optimization"]
+# -----------------------------
+# CONFIG
+# -----------------------------
+st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
+st.title("📄 AI Resume Optimizer (Upload + Text + PDF Export)")
+
+# -----------------------------
+# INPUT METHODS
+# -----------------------------
+st.subheader("📥 Input Your Resume")
+
+input_type = st.radio(
+    "Choose input type:",
+    ["✍️ Type Text", "📄 Upload PDF", "🖼️ Upload Image"]
 )
 
-role = ""
-if option == "Role Based Optimization":
-    role = st.text_input("Enter Job Role (e.g. Data Analyst, ML Engineer)")
+resume_text = ""
 
+# -----------------------------
+# TEXT INPUT
+# -----------------------------
+if input_type == "✍️ Type Text":
+    resume_text = st.text_area("Enter Resume Text")
 
-# ----------------------------
-# SIMPLE ATS SCORE FUNCTION
-# ----------------------------
-def calculate_ats_score(text):
-    keywords = [
-        "python", "machine learning", "sql",
-        "data", "project", "analysis",
-        "java", "c++"
-    ]
+# -----------------------------
+# PDF INPUT
+# -----------------------------
+elif input_type == "📄 Upload PDF":
+    pdf_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
-    score = 0
-    for k in keywords:
-        if k in text.lower():
-            score += 12
+    if pdf_file:
+        with pdfplumber.open(pdf_file) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() or ""
+        resume_text = text
+        st.success("PDF text extracted successfully!")
 
-    return min(score, 100)
+# -----------------------------
+# IMAGE INPUT (OCR)
+# -----------------------------
+elif input_type == "🖼️ Upload Image":
+    image_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
 
+    if image_file:
+        img = Image.open(image_file)
+        resume_text = pytesseract.image_to_string(img)
+        st.success("Image text extracted successfully!")
 
-# ----------------------------
-# OFFLINE RESUME IMPROVER
-# ----------------------------
-def improve_resume(text, mode, role=""):
+# -----------------------------
+# SHOW EXTRACTED TEXT
+# -----------------------------
+if resume_text:
+    st.subheader("📄 Extracted Resume Text")
+    st.write(resume_text)
 
-    text = text.strip()
+# -----------------------------
+# OPTIMIZER ENGINE (OFFLINE)
+# -----------------------------
+def fake_ai_engine(text):
 
-    improved = text
-
-    # Basic cleaning improvements
-    improved = improved.replace("i ", "I ")
-    improved = improved.replace(" ml ", " Machine Learning ")
-    improved = improved.replace(" sql ", " SQL ")
-    improved = improved.replace(" python", " Python")
-
-    if mode == "ATS Optimization":
-        improved = """
-• Strong understanding of Python and Machine Learning  
-• Experience in SQL database handling  
-• Knowledge of Data Analysis and Data Preprocessing  
-• Worked on academic projects including prediction systems  
-• Familiar with C++ and Java programming fundamentals  
-""" + improved
-
-    elif mode == "Role Based Optimization":
-        improved = f"""
-• Resume optimized for role: {role}
-
-• Strong technical foundation in Python, ML, and Data Science  
-• Experience building academic projects and models  
-• Good understanding of problem solving and analysis  
-""" + improved
-
-    else:
-        improved = """
-• Improved Professional Resume  
-• Strong technical skills in programming and data science  
-• Experience in academic ML projects  
-""" + improved
-
-    return improved
-
-
-# ----------------------------
-# UI LOGIC
-# ----------------------------
-if st.button("Optimize Resume"):
-
-    if resume_text.strip() == "":
-        st.warning("Please enter resume text")
-    else:
-
-        result = improve_resume(resume_text, option, role)
-
-        st.subheader("📊 Before vs After")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.write("### Original Resume")
-            st.write(resume_text)
-
-        with col2:
-            st.write("### Optimized Resume")
-            st.write(result)
-
-        score = calculate_ats_score(result)
-
-        st.subheader("🎯 ATS Score")
-        st.progress(score)
-        st.write(f"Score: {score}/100")
-
-        st.subheader("📄 Final Output")
-        st.write(result)
+    fixes = {
+        " i ": " I ",
+        " im ": " I am ",
+        " dont ": " do not ",
+        " didnt ": " did not ",
+        " little bit": "basic knowledge of",
+        " some college": "a college",
+       
