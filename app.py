@@ -79,4 +79,6 @@ def fake_ai_engine(text):
         " didnt ": " did not ",
         " little bit": "basic knowledge of",
         " some college": "a college",
+            " engg": "Engineering",
+}
        
