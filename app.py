@@ -7,70 +7,75 @@ import pdfplumber
 from PIL import Image
 import pytesseract
 
-from prompts import RESUME_IMPROVER_PROMPT
+# OPTIONAL: set path if needed
+# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # -----------------------------
-# CONFIG
+# APP CONFIG
 # -----------------------------
 st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
-st.title("📄 AI Resume Optimizer (Upload + Text + PDF Export)")
+st.title("📄 AI Resume Optimizer (Full Offline System)")
+
 
 # -----------------------------
-# INPUT METHODS
+# INPUT METHOD
 # -----------------------------
-st.subheader("📥 Input Your Resume")
+st.subheader("📥 Input Resume")
 
 input_type = st.radio(
     "Choose input type:",
-    ["✍️ Type Text", "📄 Upload PDF", "🖼️ Upload Image"]
+    ["✍️ Text", "📄 PDF", "🖼️ Image"]
 )
 
 resume_text = ""
 
+
 # -----------------------------
 # TEXT INPUT
 # -----------------------------
-if input_type == "✍️ Type Text":
+if input_type == "✍️ Text":
     resume_text = st.text_area("Enter Resume Text")
+
 
 # -----------------------------
 # PDF INPUT
 # -----------------------------
-elif input_type == "📄 Upload PDF":
-    pdf_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
+elif input_type == "📄 PDF":
+    file = st.file_uploader("Upload PDF", type=["pdf"])
 
-    if pdf_file:
-        with pdfplumber.open(pdf_file) as pdf:
-            text = ""
+    if file:
+        with pdfplumber.open(file) as pdf:
+            resume_text = ""
             for page in pdf.pages:
-                text += page.extract_text() or ""
-        resume_text = text
-        st.success("PDF text extracted successfully!")
+                resume_text += page.extract_text() or ""
+        st.success("PDF extracted successfully")
+
 
 # -----------------------------
 # IMAGE INPUT (OCR)
 # -----------------------------
-elif input_type == "🖼️ Upload Image":
-    image_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
+elif input_type == "🖼️ Image":
+    img_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
 
-    if image_file:
-        img = Image.open(image_file)
+    if img_file:
+        img = Image.open(img_file)
         resume_text = pytesseract.image_to_string(img)
-        st.success("Image text extracted successfully!")
+        st.success("Image text extracted successfully")
+
 
 # -----------------------------
 # SHOW EXTRACTED TEXT
 # -----------------------------
 if resume_text:
-    st.subheader("📄 Extracted Resume Text")
+    st.subheader("📄 Original Resume")
     st.write(resume_text)
 
+
 # -----------------------------
-# OPTIMIZER ENGINE (OFFLINE)
+# SIMPLE OFFLINE AI ENGINE
 # -----------------------------
-def fake_ai_engine(text):
+def optimize_resume(text):
 
     fixes = {
         " i ": " I ",
@@ -79,6 +84,94 @@ def fake_ai_engine(text):
         " didnt ": " did not ",
         " little bit": "basic knowledge of",
         " some college": "a college",
-            " engg": "Engineering",
-}
-       
+        " engg": "Engineering",
+        " ml ": " Machine Learning ",
+    }
+
+    output = text
+
+    for k, v in fixes.items():
+        output = output.replace(k, v)
+
+    sentences = output.split(".")
+    sentences = [s.strip().capitalize() for s in sentences if s.strip()]
+    output = ". ".join(sentences) + "."
+
+    return output
+
+
+# -----------------------------
+# PDF GENERATOR
+# -----------------------------
+def generate_pdf(text):
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+
+    y = height - 40
+    p.setFont("Helvetica", 10)
+
+    for line in text.split("\n"):
+        if y < 40:
+            p.showPage()
+            p.setFont("Helvetica", 10)
+            y = height - 40
+
+        p.drawString(40, y, line[:100])
+        y -= 15
+
+    p.save()
+    buffer.seek(0)
+    return buffer
+
+
+# -----------------------------
+# RUN OPTIMIZATION
+# -----------------------------
+if resume_text and st.button("🚀 Optimize Resume"):
+
+    optimized = optimize_resume(resume_text)
+
+    # BEFORE vs AFTER
+    st.subheader("📊 Before vs After")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### ❌ Original")
+        st.write(resume_text)
+
+    with col2:
+        st.markdown("### ✅ Optimized")
+        st.write(optimized)
+
+
+    # -------------------------
+    # ATS SCORE
+    # -------------------------
+    keywords = [
+        "python", "machine learning", "sql",
+        "data", "analysis", "project",
+        "java", "c++", "engineering"
+    ]
+
+    score = sum(12 for k in keywords if k in optimized.lower())
+    score = min(score, 100)
+
+    st.subheader("🎯 ATS Score")
+    st.progress(score)
+    st.write(f"Score: {score}/100")
+
+
+    # -------------------------
+    # PDF DOWNLOAD
+    # -------------------------
+    pdf_file = generate_pdf(optimized)
+
+    st.download_button(
+        "📥 Download Optimized Resume (PDF)",
+        pdf_file,
+        file_name="optimized_resume.pdf",
+        mime="application/pdf"
+    )
