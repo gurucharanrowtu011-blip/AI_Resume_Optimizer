@@ -9,19 +9,15 @@ from PIL import Image
 import pytesseract
 
 
-# OPTIONAL (Windows only)
-# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-
-
 # -----------------------------
 # APP CONFIG
 # -----------------------------
 st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
-st.title("📄 AI Resume Optimizer (Stable Version)")
+st.title("📄 AI Resume Optimizer (Final Stable Version)")
 
 
 # -----------------------------
-# INPUT
+# INPUT SECTION
 # -----------------------------
 st.subheader("📥 Input Resume")
 
@@ -30,9 +26,12 @@ input_type = st.radio("Choose input type:", ["✍️ Text", "📄 PDF", "🖼️
 resume_text = ""
 
 
+# TEXT INPUT
 if input_type == "✍️ Text":
     resume_text = st.text_area("Enter Resume Text")
 
+
+# PDF INPUT
 elif input_type == "📄 PDF":
     file = st.file_uploader("Upload PDF Resume", type=["pdf"])
     if file:
@@ -41,6 +40,8 @@ elif input_type == "📄 PDF":
                 resume_text += page.extract_text() or ""
         st.success("PDF extracted successfully")
 
+
+# IMAGE INPUT (OCR)
 elif input_type == "🖼️ Image":
     img_file = st.file_uploader("Upload Image Resume", type=["png", "jpg", "jpeg"])
     if img_file:
@@ -58,7 +59,6 @@ if resume_text:
 # EXPANSIONS (ALL ABBREVIATIONS)
 # -----------------------------
 expansions = {
-    # Branches
     "cse": "Computer Science Engineering",
     "cs": "Computer Science",
     "it": "Information Technology",
@@ -70,75 +70,107 @@ expansions = {
     "ai": "Artificial Intelligence",
     "ds": "Data Science",
 
-    # Degrees
     "btech": "Bachelor of Technology",
     "mtech": "Master of Technology",
     "be": "Bachelor of Engineering",
 
-    # Tech terms
     "ml": "Machine Learning",
     "dl": "Deep Learning",
     "nlp": "Natural Language Processing",
     "cv": "Computer Vision",
-    "ds": "Data Structures",
     "os": "Operating Systems",
     "dbms": "Database Management Systems",
     "sql": "Structured Query Language",
     "oops": "Object Oriented Programming System",
     "cn": "Computer Networks",
 
-    # Languages
     "cpp": "C++",
     "py": "Python",
     "js": "JavaScript",
 
-    # Academic
     "cgpa": "Cumulative Grade Point Average",
     "gpa": "Grade Point Average",
 
-    "engg": "Engineering",
+    "engg": "Engineering"
 }
 
 
 # -----------------------------
-# SIMPLE GRAMMAR FIX (STABLE)
+# GRAMMAR FIX (STABLE OFFLINE)
 # -----------------------------
 def fix_grammar(text):
 
     text = text.strip()
 
-    # fix lowercase "i"
     text = re.sub(r'\bi\b', 'I', text)
-
-    # basic contractions
     text = text.replace(" dont ", " do not ")
     text = text.replace(" didnt ", " did not ")
     text = text.replace(" cant ", " cannot ")
 
-    # spacing cleanup
     text = re.sub(r'\s+', ' ', text)
 
     return text
 
 
 # -----------------------------
-# OPTIMIZATION ENGINE
+# OPTIMIZER ENGINE
 # -----------------------------
 def optimize_resume(text):
 
-    # STEP 1: grammar fix
     text = fix_grammar(text)
 
-    # STEP 2: expansions
     for k, v in expansions.items():
         text = re.sub(rf"\b{k}\b", v, text, flags=re.IGNORECASE)
 
-    # STEP 3: sentence formatting
     sentences = re.split(r'(?<=[.!?])\s+', text)
-    sentences = [s.strip().capitalize() for s in sentences if s.strip()]
-    text = ". ".join(sentences)
+    sentences = [s.strip() for s in sentences if s.strip()]
 
-    return text
+    formatted = []
+    for s in sentences:
+        if len(s) > 0:
+            formatted.append(s[0].upper() + s[1:])
+
+    return ". ".join(formatted)
+
+
+# -----------------------------
+# ATS SCORE (FIXED & REALISTIC)
+# -----------------------------
+def calculate_ats(text):
+
+    text = text.lower()
+
+    keywords = {
+        "python": 10,
+        "machine learning": 10,
+        "artificial intelligence": 10,
+        "data science": 10,
+        "data analysis": 8,
+        "sql": 8,
+        "structured query language": 8,
+        "java": 6,
+        "c++": 6,
+        "javascript": 6,
+        "computer science engineering": 10,
+        "project": 6,
+        "internship": 6,
+        "problem solving": 6
+    }
+
+    score = 0
+
+    for k, v in keywords.items():
+        if k in text:
+            score += v
+
+    # length bonus
+    words = len(text.split())
+    if words > 80:
+        score += 10
+    if words > 150:
+        score += 10
+
+    return min(score, 100)
 
 
 # -----------------------------
@@ -173,7 +205,6 @@ if resume_text and st.button("🚀 Optimize Resume"):
 
     optimized = optimize_resume(resume_text)
 
-    # BEFORE vs AFTER
     st.subheader("📊 Before vs After")
 
     col1, col2 = st.columns(2)
@@ -187,27 +218,15 @@ if resume_text and st.button("🚀 Optimize Resume"):
         st.write(optimized)
 
 
-    # -------------------------
     # ATS SCORE
-    # -------------------------
-    keywords = [
-        "python", "machine learning", "artificial intelligence",
-        "data", "analysis", "project",
-        "java", "c++", "computer science engineering",
-        "sql"
-    ]
-
-    score = sum(12 for k in keywords if k in optimized.lower())
-    score = min(score, 100)
+    score = calculate_ats(optimized)
 
     st.subheader("🎯 ATS Score")
     st.progress(score)
     st.write(f"Score: {score}/100")
 
 
-    # -------------------------
     # PDF DOWNLOAD
-    # -------------------------
     pdf_file = generate_pdf(optimized)
 
     st.download_button(
