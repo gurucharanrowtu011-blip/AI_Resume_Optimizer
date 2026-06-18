@@ -7,81 +7,58 @@ from reportlab.pdfgen import canvas
 import pdfplumber
 from PIL import Image
 import pytesseract
-import language_tool_python
-tool = language_tool_python.LanguageToolPublicAPI('https://api.languagetool.org')
 
 
-# OPTIONAL (Windows users)
+# OPTIONAL (Windows only)
 # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
 # -----------------------------
-# INIT
+# APP CONFIG
 # -----------------------------
 st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
-st.title("📄 AI Resume Optimizer (Ultimate Version)")
-
-
-tool = language_tool_python.LanguageTool('en-US')
+st.title("📄 AI Resume Optimizer (Stable Version)")
 
 
 # -----------------------------
-# INPUT SECTION
+# INPUT
 # -----------------------------
 st.subheader("📥 Input Resume")
 
-input_type = st.radio(
-    "Choose input type:",
-    ["✍️ Text", "📄 PDF", "🖼️ Image"]
-)
+input_type = st.radio("Choose input type:", ["✍️ Text", "📄 PDF", "🖼️ Image"])
 
 resume_text = ""
 
 
-# -----------------------------
-# TEXT INPUT
-# -----------------------------
 if input_type == "✍️ Text":
     resume_text = st.text_area("Enter Resume Text")
 
-
-# -----------------------------
-# PDF INPUT
-# -----------------------------
 elif input_type == "📄 PDF":
     file = st.file_uploader("Upload PDF Resume", type=["pdf"])
-
     if file:
         with pdfplumber.open(file) as pdf:
             for page in pdf.pages:
                 resume_text += page.extract_text() or ""
         st.success("PDF extracted successfully")
 
-
-# -----------------------------
-# IMAGE INPUT
-# -----------------------------
 elif input_type == "🖼️ Image":
     img_file = st.file_uploader("Upload Image Resume", type=["png", "jpg", "jpeg"])
-
     if img_file:
         img = Image.open(img_file)
         resume_text = pytesseract.image_to_string(img)
         st.success("Image extracted successfully")
 
 
-# -----------------------------
-# SHOW ORIGINAL
-# -----------------------------
 if resume_text:
     st.subheader("📄 Extracted Resume")
     st.write(resume_text)
 
 
 # -----------------------------
-# EXPANSIONS (CSE + ALL BRANCHES)
+# EXPANSIONS (ALL ABBREVIATIONS)
 # -----------------------------
 expansions = {
+    # Branches
     "cse": "Computer Science Engineering",
     "cs": "Computer Science",
     "it": "Information Technology",
@@ -93,10 +70,12 @@ expansions = {
     "ai": "Artificial Intelligence",
     "ds": "Data Science",
 
+    # Degrees
     "btech": "Bachelor of Technology",
     "mtech": "Master of Technology",
     "be": "Bachelor of Engineering",
 
+    # Tech terms
     "ml": "Machine Learning",
     "dl": "Deep Learning",
     "nlp": "Natural Language Processing",
@@ -108,10 +87,12 @@ expansions = {
     "oops": "Object Oriented Programming System",
     "cn": "Computer Networks",
 
+    # Languages
     "cpp": "C++",
     "py": "Python",
     "js": "JavaScript",
 
+    # Academic
     "cgpa": "Cumulative Grade Point Average",
     "gpa": "Grade Point Average",
 
@@ -120,21 +101,39 @@ expansions = {
 
 
 # -----------------------------
+# SIMPLE GRAMMAR FIX (STABLE)
+# -----------------------------
+def fix_grammar(text):
+
+    text = text.strip()
+
+    # fix lowercase "i"
+    text = re.sub(r'\bi\b', 'I', text)
+
+    # basic contractions
+    text = text.replace(" dont ", " do not ")
+    text = text.replace(" didnt ", " did not ")
+    text = text.replace(" cant ", " cannot ")
+
+    # spacing cleanup
+    text = re.sub(r'\s+', ' ', text)
+
+    return text
+
+
+# -----------------------------
 # OPTIMIZATION ENGINE
 # -----------------------------
 def optimize_resume(text):
 
-    # STEP 1: grammar correction
-    text = tool.correct(text)
+    # STEP 1: grammar fix
+    text = fix_grammar(text)
 
-    # STEP 2: capitalization fix for "i"
-    text = re.sub(r'\bi\b', 'I', text)
-
-    # STEP 3: expansion
+    # STEP 2: expansions
     for k, v in expansions.items():
-        text = text.replace(k, v)
+        text = re.sub(rf"\b{k}\b", v, text, flags=re.IGNORECASE)
 
-    # STEP 4: sentence formatting
+    # STEP 3: sentence formatting
     sentences = re.split(r'(?<=[.!?])\s+', text)
     sentences = [s.strip().capitalize() for s in sentences if s.strip()]
     text = ". ".join(sentences)
