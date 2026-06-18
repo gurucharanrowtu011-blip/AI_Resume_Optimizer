@@ -1,19 +1,26 @@
 import streamlit as st
-import re
-from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-
 import pdfplumber
 from PIL import Image
 import pytesseract
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import re
+
+from groq import Groq
 
 
 # -----------------------------
-# APP CONFIG
+# CONFIG
 # -----------------------------
-st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
-st.title("📄 AI Resume Optimizer (Final Stable Version)")
+st.set_page_config(page_title="AI Resume Writer", layout="centered")
+st.title("🧠 REAL AI Resume Writer (ChatGPT-Level)")
+
+
+# -----------------------------
+# GROQ CLIENT
+# -----------------------------
+client = Groq(api_key=st.secrets.get("GROQ_API_KEY", "YOUR_API_KEY"))
 
 
 # -----------------------------
@@ -25,163 +32,77 @@ input_type = st.radio("Choose input type:", ["✍️ Text", "📄 PDF", "🖼️
 
 resume_text = ""
 
-
-# TEXT INPUT
 if input_type == "✍️ Text":
     resume_text = st.text_area("Enter Resume Text")
 
-
-# PDF INPUT
 elif input_type == "📄 PDF":
-    file = st.file_uploader("Upload PDF Resume", type=["pdf"])
+    file = st.file_uploader("Upload PDF", type=["pdf"])
     if file:
         with pdfplumber.open(file) as pdf:
             for page in pdf.pages:
                 resume_text += page.extract_text() or ""
-        st.success("PDF extracted successfully")
 
-
-# IMAGE INPUT
 elif input_type == "🖼️ Image":
-    img_file = st.file_uploader("Upload Image Resume", type=["png", "jpg", "jpeg"])
-    if img_file:
-        img = Image.open(img_file)
-        resume_text = pytesseract.image_to_string(img)
-        st.success("Image extracted successfully")
-
-
-if resume_text:
-    st.subheader("📄 Extracted Resume")
-    st.write(resume_text)
+    img = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
+    if img:
+        image = Image.open(img)
+        resume_text = pytesseract.image_to_string(image)
 
 
 # -----------------------------
-# EXPANSIONS
+# AI RESUME WRITER
 # -----------------------------
-expansions = {
-    "cse": "Computer Science Engineering",
-    "cs": "Computer Science",
-    "it": "Information Technology",
-    "ece": "Electronics and Communication Engineering",
-    "eee": "Electrical and Electronics Engineering",
-    "mech": "Mechanical Engineering",
-    "civil": "Civil Engineering",
-    "aiml": "Artificial Intelligence and Machine Learning",
-    "ai": "Artificial Intelligence",
-    "ds": "Data Science",
+def ai_optimize_resume(text):
 
-    "btech": "Bachelor of Technology",
-    "mtech": "Master of Technology",
-    "be": "Bachelor of Engineering",
+    prompt = f"""
+You are an expert HR resume writer.
 
-    "ml": "Machine Learning",
-    "dl": "Deep Learning",
-    "nlp": "Natural Language Processing",
-    "cv": "Computer Vision",
-    "os": "Operating Systems",
-    "dbms": "Database Management Systems",
-    "sql": "Structured Query Language",
-    "oops": "Object Oriented Programming System",
-    "cn": "Computer Networks",
+Rewrite the resume below into a PROFESSIONAL, ATS-optimized resume.
 
-    "cpp": "C++",
-    "py": "Python",
-    "js": "JavaScript",
+Rules:
+- Fix all grammar mistakes
+- Capitalize names properly
+- Expand abbreviations (CSE → Computer Science Engineering, ML → Machine Learning)
+- Improve sentence structure
+- Make it sound professional
+- Keep meaning same
+- Do NOT add fake experience
+- Format in clean paragraphs or bullet points
 
-    "cgpa": "Cumulative Grade Point Average",
-    "gpa": "Grade Point Average",
+Resume:
+{text}
+"""
 
-    "engg": "Engineering"
-}
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {"role": "system", "content": "You are a professional resume writer."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    return response.choices[0].message.content
 
 
 # -----------------------------
-# GRAMMAR FIX (SAFE OFFLINE)
-# -----------------------------
-def fix_grammar(text):
-
-    text = text.strip()
-
-    # fix lowercase "i"
-    text = re.sub(r'\bi\b', 'I', text)
-
-    # contractions
-    text = text.replace(" dont ", " do not ")
-    text = text.replace(" didnt ", " did not ")
-    text = text.replace(" cant ", " cannot ")
-
-    # spacing cleanup
-    text = re.sub(r'\s+', ' ', text)
-
-    return text
-
-
-# -----------------------------
-# OPTIMIZER (FIXED PUNCTUATION)
-# -----------------------------
-def optimize_resume(text):
-
-    text = fix_grammar(text)
-
-    # expansions
-    for k, v in expansions.items():
-        text = re.sub(rf"\b{k}\b", v, text, flags=re.IGNORECASE)
-
-    # IMPORTANT FIX: preserve punctuation
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-
-    fixed = []
-    for s in sentences:
-        s = s.strip()
-        if not s:
-            continue
-
-        # only fix first letter
-        s = s[0].upper() + s[1:]
-        fixed.append(s)
-
-    return " ".join(fixed)
-
-
-# -----------------------------
-# ATS SCORE (IMPROVED)
+# ATS SCORE (AI OUTPUT BASED)
 # -----------------------------
 def calculate_ats(text):
 
     text = text.lower()
 
-    keywords = {
-        "python": 10,
-        "machine learning": 10,
-        "artificial intelligence": 10,
-        "data science": 10,
-        "sql": 8,
-        "java": 6,
-        "c++": 6,
-        "javascript": 6,
-        "computer science engineering": 10,
-        "project": 6,
-        "internship": 6,
-        "problem solving": 6
-    }
+    keywords = [
+        "python", "machine learning", "data", "sql",
+        "engineering", "project", "analysis",
+        "computer science"
+    ]
 
-    score = 0
-
-    for k, v in keywords.items():
-        if k in text:
-            score += v
-
-    words = len(text.split())
-    if words > 80:
-        score += 10
-    if words > 150:
-        score += 10
-
+    score = sum(100 // len(keywords) for k in keywords if k in text)
     return min(score, 100)
 
 
 # -----------------------------
-# PDF GENERATOR
+# PDF
 # -----------------------------
 def generate_pdf(text):
 
@@ -195,8 +116,6 @@ def generate_pdf(text):
         if y < 40:
             p.showPage()
             y = 750
-            p.setFont("Helvetica", 10)
-
         p.drawString(40, y, line[:100])
         y -= 15
 
@@ -208,9 +127,9 @@ def generate_pdf(text):
 # -----------------------------
 # RUN
 # -----------------------------
-if resume_text and st.button("🚀 Optimize Resume"):
+if resume_text and st.button("🚀 Generate Professional Resume"):
 
-    optimized = optimize_resume(resume_text)
+    optimized = ai_optimize_resume(resume_text)
 
     st.subheader("📊 Before vs After")
 
@@ -221,11 +140,10 @@ if resume_text and st.button("🚀 Optimize Resume"):
         st.write(resume_text)
 
     with col2:
-        st.markdown("### ✅ Optimized")
+        st.markdown("### ✅ AI Optimized")
         st.write(optimized)
 
 
-    # ATS SCORE
     score = calculate_ats(optimized)
 
     st.subheader("🎯 ATS Score")
@@ -233,12 +151,11 @@ if resume_text and st.button("🚀 Optimize Resume"):
     st.write(f"Score: {score}/100")
 
 
-    # PDF DOWNLOAD
-    pdf_file = generate_pdf(optimized)
+    pdf = generate_pdf(optimized)
 
     st.download_button(
-        "📥 Download Optimized Resume PDF",
-        pdf_file,
-        file_name="optimized_resume.pdf",
+        "📥 Download Resume PDF",
+        pdf,
+        file_name="AI_Resume.pdf",
         mime="application/pdf"
     )
