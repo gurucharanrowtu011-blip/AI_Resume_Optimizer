@@ -13,7 +13,7 @@ import pytesseract
 # APP CONFIG
 # -----------------------------
 st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
-st.title("📄 AI Resume Optimizer (Final Stable Version)")
+st.title("📄 AI Resume Optimizer")
 
 
 # -----------------------------
