@@ -17,7 +17,7 @@ st.title("📄 AI Resume Optimizer")
 
 
 # -----------------------------
-# INPUT SECTION
+# INPUT
 # -----------------------------
 st.subheader("📥 Input Resume")
 
@@ -41,7 +41,7 @@ elif input_type == "📄 PDF":
         st.success("PDF extracted successfully")
 
 
-# IMAGE INPUT (OCR)
+# IMAGE INPUT
 elif input_type == "🖼️ Image":
     img_file = st.file_uploader("Upload Image Resume", type=["png", "jpg", "jpeg"])
     if img_file:
@@ -56,7 +56,7 @@ if resume_text:
 
 
 # -----------------------------
-# EXPANSIONS (ALL ABBREVIATIONS)
+# EXPANSIONS
 # -----------------------------
 expansions = {
     "cse": "Computer Science Engineering",
@@ -96,45 +96,55 @@ expansions = {
 
 
 # -----------------------------
-# GRAMMAR FIX (STABLE OFFLINE)
+# GRAMMAR FIX (SAFE OFFLINE)
 # -----------------------------
 def fix_grammar(text):
 
     text = text.strip()
 
+    # fix lowercase "i"
     text = re.sub(r'\bi\b', 'I', text)
+
+    # contractions
     text = text.replace(" dont ", " do not ")
     text = text.replace(" didnt ", " did not ")
     text = text.replace(" cant ", " cannot ")
 
+    # spacing cleanup
     text = re.sub(r'\s+', ' ', text)
 
     return text
 
 
 # -----------------------------
-# OPTIMIZER ENGINE
+# OPTIMIZER (FIXED PUNCTUATION)
 # -----------------------------
 def optimize_resume(text):
 
     text = fix_grammar(text)
 
+    # expansions
     for k, v in expansions.items():
         text = re.sub(rf"\b{k}\b", v, text, flags=re.IGNORECASE)
 
+    # IMPORTANT FIX: preserve punctuation
     sentences = re.split(r'(?<=[.!?])\s+', text)
-    sentences = [s.strip() for s in sentences if s.strip()]
 
-    formatted = []
+    fixed = []
     for s in sentences:
-        if len(s) > 0:
-            formatted.append(s[0].upper() + s[1:])
+        s = s.strip()
+        if not s:
+            continue
 
-    return ". ".join(formatted)
+        # only fix first letter
+        s = s[0].upper() + s[1:]
+        fixed.append(s)
+
+    return " ".join(fixed)
 
 
 # -----------------------------
-# ATS SCORE (FIXED & REALISTIC)
+# ATS SCORE (IMPROVED)
 # -----------------------------
 def calculate_ats(text):
 
@@ -145,9 +155,7 @@ def calculate_ats(text):
         "machine learning": 10,
         "artificial intelligence": 10,
         "data science": 10,
-        "data analysis": 8,
         "sql": 8,
-        "structured query language": 8,
         "java": 6,
         "c++": 6,
         "javascript": 6,
@@ -163,7 +171,6 @@ def calculate_ats(text):
         if k in text:
             score += v
 
-    # length bonus
     words = len(text.split())
     if words > 80:
         score += 10
@@ -199,7 +206,7 @@ def generate_pdf(text):
 
 
 # -----------------------------
-# RUN BUTTON
+# RUN
 # -----------------------------
 if resume_text and st.button("🚀 Optimize Resume"):
 
