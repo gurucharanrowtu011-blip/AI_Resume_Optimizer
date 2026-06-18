@@ -7,20 +7,25 @@ from reportlab.pdfgen import canvas
 import pdfplumber
 from PIL import Image
 import pytesseract
+import language_tool_python
 
-# OPTIONAL (Windows path fix)
+
+# OPTIONAL (Windows users)
 # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
 # -----------------------------
-# APP CONFIG
+# INIT
 # -----------------------------
 st.set_page_config(page_title="AI Resume Optimizer", layout="centered")
-st.title("📄 AI Resume Optimizer (Final Clean Version)")
+st.title("📄 AI Resume Optimizer (Ultimate Version)")
+
+
+tool = language_tool_python.LanguageTool('en-US')
 
 
 # -----------------------------
-# INPUT TYPE
+# INPUT SECTION
 # -----------------------------
 st.subheader("📥 Input Resume")
 
@@ -61,11 +66,11 @@ elif input_type == "🖼️ Image":
     if img_file:
         img = Image.open(img_file)
         resume_text = pytesseract.image_to_string(img)
-        st.success("Image text extracted successfully")
+        st.success("Image extracted successfully")
 
 
 # -----------------------------
-# SHOW RAW TEXT
+# SHOW ORIGINAL
 # -----------------------------
 if resume_text:
     st.subheader("📄 Extracted Resume")
@@ -73,42 +78,62 @@ if resume_text:
 
 
 # -----------------------------
-# STRONG GRAMMAR + EXPANSION ENGINE
+# EXPANSIONS (CSE + ALL BRANCHES)
+# -----------------------------
+expansions = {
+    "cse": "Computer Science Engineering",
+    "cs": "Computer Science",
+    "it": "Information Technology",
+    "ece": "Electronics and Communication Engineering",
+    "eee": "Electrical and Electronics Engineering",
+    "mech": "Mechanical Engineering",
+    "civil": "Civil Engineering",
+    "aiml": "Artificial Intelligence and Machine Learning",
+    "ai": "Artificial Intelligence",
+    "ds": "Data Science",
+
+    "btech": "Bachelor of Technology",
+    "mtech": "Master of Technology",
+    "be": "Bachelor of Engineering",
+
+    "ml": "Machine Learning",
+    "dl": "Deep Learning",
+    "nlp": "Natural Language Processing",
+    "cv": "Computer Vision",
+    "ds": "Data Structures",
+    "os": "Operating Systems",
+    "dbms": "Database Management Systems",
+    "sql": "Structured Query Language",
+    "oops": "Object Oriented Programming System",
+    "cn": "Computer Networks",
+
+    "cpp": "C++",
+    "py": "Python",
+    "js": "JavaScript",
+
+    "cgpa": "Cumulative Grade Point Average",
+    "gpa": "Grade Point Average",
+
+    "engg": "Engineering",
+}
+
+
+# -----------------------------
+# OPTIMIZATION ENGINE
 # -----------------------------
 def optimize_resume(text):
 
-    text = text.strip()
+    # STEP 1: grammar correction
+    text = tool.correct(text)
 
-    # FIX standalone "i"
+    # STEP 2: capitalization fix for "i"
     text = re.sub(r'\bi\b', 'I', text)
 
-    # -----------------------------
-    # FULL EXPANSIONS + FIXES
-    # -----------------------------
-    fixes = {
-        "cse": "Computer Science Engineering",
-        "c.s.e": "Computer Science Engineering",
-        "cs": "Computer Science",
-        "ml": "Machine Learning",
-        "ai": "Artificial Intelligence",
-        "i am": "I am",
-        "i have": "I have",
-        "i know": "I have knowledge of",
-        "dont": "do not",
-        "didnt": "did not",
-        "engg": "Engineering",
-        "btech": "Bachelor of Technology",
-        "little bit": "basic knowledge of",
-        "some college": "a college",
-        "c++": "C++",
-        "java": "Java",
-        "sql": "SQL"
-    }
-
-    for k, v in fixes.items():
+    # STEP 3: expansion
+    for k, v in expansions.items():
         text = text.replace(k, v)
 
-    # Sentence formatting
+    # STEP 4: sentence formatting
     sentences = re.split(r'(?<=[.!?])\s+', text)
     sentences = [s.strip().capitalize() for s in sentences if s.strip()]
     text = ". ".join(sentences)
@@ -123,16 +148,15 @@ def generate_pdf(text):
 
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
 
-    y = height - 40
+    y = 750
     p.setFont("Helvetica", 10)
 
     for line in text.split("\n"):
         if y < 40:
             p.showPage()
+            y = 750
             p.setFont("Helvetica", 10)
-            y = height - 40
 
         p.drawString(40, y, line[:100])
         y -= 15
@@ -143,7 +167,7 @@ def generate_pdf(text):
 
 
 # -----------------------------
-# MAIN ACTION
+# RUN BUTTON
 # -----------------------------
 if resume_text and st.button("🚀 Optimize Resume"):
 
@@ -168,8 +192,9 @@ if resume_text and st.button("🚀 Optimize Resume"):
     # -------------------------
     keywords = [
         "python", "machine learning", "artificial intelligence",
-        "sql", "data", "analysis", "project",
-        "java", "c++", "computer science engineering"
+        "data", "analysis", "project",
+        "java", "c++", "computer science engineering",
+        "sql"
     ]
 
     score = sum(12 for k in keywords if k in optimized.lower())
@@ -186,7 +211,7 @@ if resume_text and st.button("🚀 Optimize Resume"):
     pdf_file = generate_pdf(optimized)
 
     st.download_button(
-        "📥 Download Optimized Resume (PDF)",
+        "📥 Download Optimized Resume PDF",
         pdf_file,
         file_name="optimized_resume.pdf",
         mime="application/pdf"
