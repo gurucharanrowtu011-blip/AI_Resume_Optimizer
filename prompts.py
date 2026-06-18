@@ -1,18 +1,24 @@
 # prompts.py
 
 RESUME_IMPROVER_PROMPT = """
-You are a professional resume writer and career expert.
+You are an expert resume editor.
 
 TASK:
-Rewrite the entire resume into a fully professional format.
+Rewrite the resume into a fully professional, grammatically correct version.
 
 STRICT RULES:
-- Completely rewrite all sentences (DO NOT copy original sentences)
-- Fix grammar, spelling, and capitalization
-- Convert informal text into professional resume language
+- Fix ALL grammar and spelling mistakes
+- Correct capitalization (e.g., Raj Kumar, Python, Machine Learning)
+- Rewrite sentences in formal professional English
+- DO NOT copy original sentences exactly
+- DO NOT repeat input text as-is
+- Maintain original meaning
 - Make it structured and ATS-friendly
-- Maintain original meaning but improve everything
-- Use clear bullet points where needed
+- Remove informal language like "little bit", "dont know", etc.
+
+OUTPUT RULE:
+Return ONLY the final improved resume.
+No explanations. No original text.
 
 Resume:
 {text}
@@ -20,37 +26,42 @@ Resume:
 Final Resume:
 """
 
+
 ATS_OPTIMIZER_PROMPT = """
-You are an ATS (Applicant Tracking System) optimization expert.
+You are an ATS optimization expert.
 
 TASK:
-Rewrite the resume to maximize ATS compatibility.
+Rewrite resume for ATS systems.
 
 STRICT RULES:
-- Fully rewrite the resume (no sentence reuse)
-- Add relevant technical keywords naturally
-- Improve structure and readability
-- Make it simple, clear, and keyword-rich
-- Do NOT invent fake experience
+- Fully rewrite all sentences
+- Improve grammar and structure
+- Add professional wording
+- Improve keyword richness
+- DO NOT fabricate new experience
+
+OUTPUT:
+Only final ATS-friendly resume.
 
 Resume:
 {text}
 
-ATS Optimized Resume:
+ATS Resume:
 """
 
+
 ROLE_BASED_PROMPT = """
-You are a senior HR resume expert.
+You are a senior HR resume writer.
 
 TASK:
-Rewrite the resume for the role: {role}
+Rewrite resume for role: {role}
 
 STRICT RULES:
-- Fully rewrite all content (no copying original text)
-- Highlight relevant skills for the role
-- Improve professionalism and structure
-- Align resume with industry expectations
-- Do NOT fabricate experience
+- Fully rewrite entire resume
+- Fix grammar and capitalization
+- Make it role-specific and professional
+- Improve clarity and structure
+- DO NOT invent experience
 
 Resume:
 {text}
